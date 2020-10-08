@@ -4,7 +4,7 @@ import Manager from "./manager";
 
 function createWindow() {
   // close menu.
-  Menu.setApplicationMenu(null);
+  // Menu.setApplicationMenu(null);
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -19,7 +19,7 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "../index.html"));
 
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   Manager.getInstance().setWindow(mainWindow);
 }
