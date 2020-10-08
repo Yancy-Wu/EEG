@@ -1,0 +1,12 @@
+# project files.
+.vscode
+/EEG/.idea
+/FrontEnd/.vscode
+
+# generated files.
+/EEG/target
+/FrontEnd/dist
+/FrontEnd/node_modules
+
+# animation pictures. too big.
+/FrontEnd/animation

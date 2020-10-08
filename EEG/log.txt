@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE log SYSTEM "logger.dtd">
+<log>
+<record>
+  <date>2020-09-23T07:51:06.551849Z</date>
+  <millis>1600847466551</millis>
+  <nanos>849000</nanos>
+  <sequence>0</sequence>
+  <logger>EEGLogger</logger>
+  <level>INFO</level>
+  <class>EEGLogger</class>
+  <method>log</method>
+  <thread>17</thread>
+  <message>hello</message>
+</record>
+</log>

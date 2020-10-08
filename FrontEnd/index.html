@@ -1,0 +1,20 @@
+<html>
+  <!-- external css and script -->
+  <head>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="./dist/renderer.js"></script>
+  </head>
+  <!-- body content here. -->
+  <body>
+	<div id="main">
+		<div id="svgContainer" data-svg-path="./picture.svg"></div>
+		<div id="imgContainer">
+			<canvas width="2000px" height="500px" class="frameImg" data-animation-dir="./animation/捣衣" data-name="捣衣"></canvas>
+			<canvas width="2000px" height="500px" class="frameImg" data-animation-dir="./animation/煽火" data-name="煽火"></canvas>
+			<canvas width="2000px" height="500px" class="frameImg" data-animation-dir="./animation/熨布" data-name="熨布"></canvas>
+			<canvas width="2000px" height="500px" class="frameImg" data-animation-dir="./animation/织衣" data-name="织衣"></canvas>
+		</div>
+	</div>
+    <span id="attentionValTitle">Attention Val is: <span id="attentionVal"></span> </span>
+  </body>
+</html>
