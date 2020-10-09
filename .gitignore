@@ -3,6 +3,7 @@
 /FrontEnd/.vscode
 
 # generated files.
+/EEG/out
 /EEG/target
 /FrontEnd/dist
 /FrontEnd/node_modules
