@@ -7,12 +7,12 @@ export default class Manager {
     private static instance:Manager = null;
 
     private constructor() {
-        // this.ipc = IPC.getInstance();
-        // this.ipc.callRemote("hello", 123, "this message from front end.");
+        this.ipc = IPC.getInstance();
+        setInterval(() => this.ipc.callRemote("tick"), 1000);
     }
 
     public setWindow(window:BrowserWindow) {
-        this.window = window
+        this.window = window;
     }
 
     public static getInstance(): Manager {
@@ -23,7 +23,7 @@ export default class Manager {
 
     @IPC.registerMessageHandler
     private static onAttentionValueChangedEvent(value: Number) {
-        console.log(value);
+        Manager.getInstance().window.setTitle(`EEG DEMO - attention value: ${value}`);
         Manager.getInstance().window.webContents.send("onAttentionValueChangedEvent", value);
     }
 

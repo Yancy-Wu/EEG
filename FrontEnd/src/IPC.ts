@@ -42,7 +42,7 @@ export default class IPC {
         propertyName: string,
         propertyDescriptor: PropertyDescriptor): PropertyDescriptor {
         // 将回调函数加入字典中
-        // IPC.getInstance().callbackDict[propertyName] = propertyDescriptor.value;
+        IPC.getInstance().callbackDict[propertyName] = propertyDescriptor.value;
         return propertyDescriptor;
     }
 
@@ -52,10 +52,11 @@ export default class IPC {
         @param {any} args: 函数参数
     */
     public callRemote(funcName: string, ...args: any): void {
-        this.child.stdin.write(JSON.stringify({
+        const outData = JSON.stringify({
             "funcName": funcName,
             "args": args
-        }))
+        });
+        this.child.stdin.write(outData + '\n');
     }
 
     /*
@@ -70,7 +71,7 @@ export default class IPC {
                 this.callbackDict[command["funcName"]](...command["args"])
             } catch (error) {
                 if (error instanceof SyntaxError) {
-                    console.log(`Cannot parse json from string: ${element}`)
+                    console.log(`[JAVA] ${element.toString()}`);
                 }
             }
         });

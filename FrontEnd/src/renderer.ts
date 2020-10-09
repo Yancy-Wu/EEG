@@ -7,6 +7,11 @@ ipcRenderer.on('onAttentionValueChangedEvent', function (_: any, value: number) 
     attentionValSpan.innerHTML = value.toString();
 });
 
+function getAttentionValue(): number {
+    let attentionValSpan = document.getElementById("attentionVal");
+    return Number.parseFloat(attentionValSpan.innerHTML);
+}
+
 class Vector2 {
     public x: number = 0;
     public y: number = 0;
@@ -238,6 +243,7 @@ class SVGManager {
 
 window.onload = () => {
     // 拿到image节点.
+    const toastElement = document.getElementById("toast");
     const svgManager = new SVGManager(
         <HTMLDivElement>document.getElementById("svgContainer")
     );
@@ -262,6 +268,7 @@ window.onload = () => {
                 setTimeout(draw, 50);
                 break;
             case "edge":
+                toastElement.className = "loaded";
                 if (curPathIndex == svgManager.getPathCount()) {
                     procedure = "fill";
                     curPathIndex = 0;

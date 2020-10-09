@@ -1,20 +1,27 @@
-import java.io.IOException;
+class EEGService extends Service {
+    private long lastTickTime = System.currentTimeMillis();
 
-class EEGService extends Service{
     public EEGService(Server server) throws Exception {
         super(server, EEGService.class);
     }
 
-    @CalledByRemote
-    public void hello(int testInt, String testString) throws IOException {
-        EEGLogger.log(testString);
+    public long getLastTickTime() {
+        return lastTickTime;
     }
 
+    /*
+        该函数由前端调用，用于保持和前端的连接心跳。
+     */
+    @CalledByRemote
+    public void tick() {
+        lastTickTime = System.currentTimeMillis();
+        // System.out.println("Received Tick!");
+    }
+
+    /*
+        该函数将调用前端的onAttentionValueChangedEvent的函数，并传递当前的attention值。
+     */
     public void sendAttentionValueChangedEvent(int attention){
         this.server.callRemote("onAttentionValueChangedEvent", attention);
-    }
-
-    public void sendMessage(String message){
-        this.server.callRemote("onMessage", message);
     }
 }
