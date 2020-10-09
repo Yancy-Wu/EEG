@@ -1,6 +1,5 @@
 # project files.
 .vscode
-/EEG/.idea
 /FrontEnd/.vscode
 
 # generated files.
