@@ -5,13 +5,31 @@ body, html {
     flex-direction: row;
     height: 100%;
     width: 100%;
+    background-color: black;
 }
 
-#svgContainer, #imgContainer {
+#svgContainer, #imgContainer, #backContainer {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#backWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    overflow: hidden;
+    transition: 2.5s ease;
+}
+
+#svgContainer svg {
+    width:100%;
 }
 
 .frameImg {
@@ -21,7 +39,8 @@ body, html {
 }
 
 #attentionValTitle {
-    display: none;
+    /* display: none; */
+    color: aliceblue;
 }
 
 .loading {
@@ -34,6 +53,7 @@ body, html {
     top: 0;
     width: 100%;
     height: 100%;
+    display: none;
 }
 
 .loaded {

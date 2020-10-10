@@ -123,31 +123,42 @@ class SVGPathManipulator {
 }
 
 class ImageAnimationController {
-    private imgs: ImageBitmap[];
+    private imgs: HTMLImageElement[];
     private canvasElement: HTMLCanvasElement;
     private curFrameIndex: number = 0;
     private fps: number = 0;
     private timer: NodeJS.Timeout = null;
+    private loadedFileCount = 0;
     public constructor(canvasElement: HTMLCanvasElement, dirname: string) {
         let imgFileNames: string[] = fs.readdirSync(dirname, { encoding: "utf-8" });
         imgFileNames = imgFileNames.sort();
         this.canvasElement = canvasElement;
         this.imgs = imgFileNames.map(_ => null);
-        let loadedFileCount = 0;
-        imgFileNames.forEach((fn, index) => {
-            let img = new Image();
-            img.src = `${dirname}/${fn}`;
+        let curIndex = 0;
+        const loadImg = () => {
+            const fn = imgFileNames[curIndex];
+            const img = new Image();
             img.onload = () => {
                 const width = Number.parseFloat(this.canvasElement.getAttribute("width"));
-                createImageBitmap(img, {resizeWidth:width}).then(val => {
-                    this.imgs[index] = val;
-                    loadedFileCount++;
-                    if (loadedFileCount == imgFileNames.length) this.onload();
-                });
+                // createImageBitmap(img, {resizeWidth:width}).then(val => {
+                //     this.imgs[curIndex] = val;
+                //     this.loadedFileCount++;
+                //     if (this.loadedFileCount == imgFileNames.length) this.onload();
+                //     else loadImg();
+                // });
+                this.imgs[curIndex] = img;
+                this.loadedFileCount++;
+                curIndex++;
+                if (this.loadedFileCount == imgFileNames.length) this.onload();
+                else loadImg();
             }
-        });
+            img.src = `${dirname}/${fn}`;
+        }
+        loadImg();
     }
     public onload: () => void;
+    public getLoadedFrameCount = () => this.loadedFileCount;
+    public getFrameCount = () => this.imgs.length;
     public setFPS(fps: number) {
         fps = Math.max(fps, 0);
         if (fps == this.fps) return;
@@ -164,13 +175,14 @@ class ImageAnimationController {
         const height = Number.parseFloat(this.canvasElement.getAttribute("height"));
         const curImg = this.imgs[this.curFrameIndex];
         ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(curImg, 0, 0);
+        ctx.drawImage(curImg, 0, 0, width, height);
         this.timer = setTimeout(this.update.bind(this), 1000 / this.fps);
     }
 }
 
 class ImageAnimationManager {
     private controllerDict: { [key: string]: ImageAnimationController; } = {}
+    private controllerList: ImageAnimationController[] = [];
     public constructor(containerElement: HTMLDivElement) {
         let loadedController = 0;
         const canvasElements = Array.from(containerElement.children);
@@ -179,6 +191,7 @@ class ImageAnimationManager {
             const animationDir = canvasElement.dataset.animationDir;
             const controller = new ImageAnimationController(canvasElement, animationDir);
             this.controllerDict[name] = controller;
+            this.controllerList.push(controller);
             controller.onload = () => {
                 loadedController++;
                 if (loadedController == canvasElements.length) this.onload();
@@ -187,6 +200,13 @@ class ImageAnimationManager {
     }
     public getController(name: string) {
         return this.controllerDict[name];
+    }
+    public getLoadProgress(): number {
+        let totalFrameCount = 0;
+        let loadedFrameCount = 0;
+        this.controllerList.forEach(controller => totalFrameCount += controller.getFrameCount());
+        this.controllerList.forEach(controller => loadedFrameCount += controller.getLoadedFrameCount());
+        return loadedFrameCount / totalFrameCount;
     }
     public hide() {
         // pass.
@@ -199,6 +219,11 @@ class ImageAnimationManager {
 
 class SVGManager {
     private paths: SVGPathManipulator[] = null;
+    private drawingCount:number = 0;
+    public drawBatchCount: number = 6;
+    public edgeLengthPerDraw: number = 10;
+    public edgeInterval: number = 30;
+    public fillInterval: number = 30;
     public constructor(svgContainer: HTMLDivElement) {
         // 获取捣练图的SVG文件内容.
         let svgFileBuffer = fs.readFileSync(svgContainer.dataset.svgPath);
@@ -218,18 +243,58 @@ class SVGManager {
         })
     }
 
+    public getLongestPathLength(): number {
+        let maxLength = 0;
+        this.paths.forEach(path => {
+            maxLength = Math.max(maxLength, path.length());
+        })
+        return maxLength;
+    }
+
+    public clearDrawingCount() {
+        this.drawingCount = 0;
+    }
+
+    public drawFillBundle(onDone:Function) {
+        let nextDrawIndex = 0;
+        let drawFillImpl = () => {
+            if(nextDrawIndex == this.getPathCount()) return;
+            for(;this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
+                this.paths[nextDrawIndex].hideEdge();
+                this.paths[nextDrawIndex].drawFill(() => {
+                    --this.drawingCount;
+                    drawFillImpl();
+                }, 0.2, this.fillInterval);
+                ++nextDrawIndex;
+                if(nextDrawIndex == this.getPathCount()) onDone(); 
+            }
+        };
+        drawFillImpl();
+    }
+
+    public drawEdgeBundle(onDone:Function) {
+        let nextDrawIndex = 0;
+        let drawEdgeImpl = () => {
+            if(nextDrawIndex == this.getPathCount()) return;
+            for(;this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
+                this.paths[nextDrawIndex].drawEdge(() => {
+                    --this.drawingCount;
+                    drawEdgeImpl();
+                }, this.edgeLengthPerDraw, this.edgeInterval);
+                ++nextDrawIndex;
+                if(nextDrawIndex == this.getPathCount()) onDone(); 
+            }
+        };
+        drawEdgeImpl();
+    }
+
     public hide() {
         this.paths.forEach((path, _, __) => {
             path.hideEdge();
             path.hideFill();
-            path.setStrokeColor("#000000");
-            path.setStrokeWidth(0.5);
+            path.setStrokeColor("#222222");
+            path.setStrokeWidth(0.75);
         })
-    }
-
-    private filterShortSVGPath(path: SVGPathManipulator, threshold: number) {
-        let len = path.length();
-        return len > threshold;
     }
 
     public getPath(index: number) {
@@ -244,63 +309,73 @@ class SVGManager {
 window.onload = () => {
     // 拿到image节点.
     const toastElement = document.getElementById("toast");
+    const backElement = document.getElementById("backWrapper");
+    const backImgElement = document.getElementById("backImg");
     const svgManager = new SVGManager(
         <HTMLDivElement>document.getElementById("svgContainer")
     );
     const imgAnimationManager = new ImageAnimationManager(
         <HTMLDivElement>document.getElementById("imgContainer")
     );
+    // PPP;
+    backImgElement.style.width = window.innerWidth.toString();
     // 绘制边缘.
-    let curPathIndex = 0;
-    let procedure: "prepare" | "load" | "edge" | "fill" | "display" | "animation" | "end" = "prepare";
-    imgAnimationManager.onload = () => {
-        procedure = "edge";
-    }
+    let procedure: "prepare" | "loading" | "load-done" | "edging" | "edge-done" | "filling" |
+                   "fill-done" | "animation" | "end" = "prepare";
+    
     let draw = () => {
         switch (procedure) {
             case "prepare":
                 svgManager.hide();
                 imgAnimationManager.hide();
-                procedure = "load";
+                procedure = "loading";
+                imgAnimationManager.onload = () => {
+                    procedure = "load-done";
+                }
                 setTimeout(draw, 50);
                 break;
-            case "load":
+            case "loading":
                 setTimeout(draw, 50);
                 break;
-            case "edge":
+            case "load-done":
+                backElement.style.width = "100%";
                 toastElement.className = "loaded";
-                if (curPathIndex == svgManager.getPathCount()) {
-                    procedure = "fill";
-                    curPathIndex = 0;
-                    setTimeout(draw, 10);
-                    break;
-                }
-                svgManager.getPath(curPathIndex).drawEdge(draw, 50, 10);
-                ++curPathIndex;
+                setTimeout(() => {
+                    procedure = "edging";
+                    svgManager.drawEdgeBundle(() => {
+                        procedure = "edge-done";
+                    });
+                    draw();
+                }, 4000);
+            case "edging":
+                // do control here.
+                setTimeout(draw, 50);
                 break;
-            case "fill":
-                if (curPathIndex == svgManager.getPathCount()) {
-                    procedure = "display";
-                    curPathIndex = 0;
-                    setTimeout(draw, 10);
-                    break;
-                }
-                svgManager.getPath(curPathIndex).hideEdge();
-                svgManager.getPath(curPathIndex).drawFill(draw, 0.3, 10);
-                ++curPathIndex;
+            case "edge-done":
+                svgManager.clearDrawingCount();
+                svgManager.drawFillBundle(() => {
+                    procedure = "fill-done";
+                });
+                procedure = "filling";
+                setTimeout(draw, 10);
                 break;
-            case "display":
-                // svgManager.hide();
+            case "filling":
+                // do control here.
+                setTimeout(draw, 50);
+                break;
+            case "fill-done":
                 imgAnimationManager.display();
+                svgManager.hide();
                 procedure = "animation";
                 setTimeout(draw, 10);
                 break;
             case "animation":
+                // do control here.
                 imgAnimationManager.getController("捣衣").setFPS(30);
                 imgAnimationManager.getController("煽火").setFPS(30);
                 imgAnimationManager.getController("熨布").setFPS(30);
                 imgAnimationManager.getController("织衣").setFPS(30);
-                setTimeout(draw, 10);
+                setTimeout(draw, 50);
                 break;
             default:
                 break;

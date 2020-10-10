@@ -13,6 +13,7 @@ function createWindow() {
       nodeIntegration: true
     },
     width: 1200,
+    fullscreen: true
   });
 
   // and load the index.html of the app.
