@@ -390,7 +390,11 @@ window.onload = () => {
             case "animation":
                 // do control here.
                 imgAnimationManager.getController("捣衣").setFPS(0);
+<<<<<<< HEAD
                 imgAnimationManager.getController("煽火").setFPS(30);
+=======
+                imgAnimationManager.getController("煽火").setFPS(50);
+>>>>>>> d30615f31d802058f4593f5f4481952c88720e4f
                 imgAnimationManager.getController("熨布").setFPS(30);
                 imgAnimationManager.getController("织衣").setFPS(60);
                 setTimeout(draw, 50);
