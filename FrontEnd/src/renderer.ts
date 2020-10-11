@@ -140,6 +140,7 @@ class ImageAnimationController {
             const img = new Image();
             img.onload = () => {
                 const width = Number.parseFloat(this.canvasElement.getAttribute("width"));
+                // time consuming operation.
                 // createImageBitmap(img, {resizeWidth:width}).then(val => {
                 //     this.imgs[curIndex] = val;
                 //     this.loadedFileCount++;
@@ -307,24 +308,29 @@ class SVGManager {
 }
 
 window.onload = () => {
-    // 拿到image节点.
+    // 拿到一些元素节点.
     const toastElement = document.getElementById("toast");
     const backElement = document.getElementById("backWrapper");
     const backImgElement = document.getElementById("backImg");
+
+    // 创建SVG管理和图片动画管理.
     const svgManager = new SVGManager(
         <HTMLDivElement>document.getElementById("svgContainer")
     );
     const imgAnimationManager = new ImageAnimationManager(
         <HTMLDivElement>document.getElementById("imgContainer")
     );
-    // PPP;
+
+    // 设定背景图片的宽度;
     backImgElement.style.width = window.innerWidth.toString();
-    // 绘制边缘.
+
+    // 主渲染逻辑
     let procedure: "prepare" | "loading" | "load-done" | "edging" | "edge-done" | "filling" |
                    "fill-done" | "animation" | "end" = "prepare";
-    
     let draw = () => {
+        const attention = getAttentionValue();
         switch (procedure) {
+            // 准备阶段
             case "prepare":
                 svgManager.hide();
                 imgAnimationManager.hide();
@@ -334,9 +340,11 @@ window.onload = () => {
                 }
                 setTimeout(draw, 50);
                 break;
+            // 加载资源阶段
             case "loading":
                 setTimeout(draw, 50);
                 break;
+            // 加载完毕阶段
             case "load-done":
                 backElement.style.width = "100%";
                 toastElement.className = "loaded";
@@ -347,10 +355,15 @@ window.onload = () => {
                     });
                     draw();
                 }, 4000);
+            // 描边阶段
             case "edging":
                 // do control here.
+                // svgManager.edgeInterval = ?
+                // svgManager.drawBatchCount = ?
+                // svgManager.edgeLengthPerDraw = ?
                 setTimeout(draw, 50);
                 break;
+            // 描边完成阶段
             case "edge-done":
                 svgManager.clearDrawingCount();
                 svgManager.drawFillBundle(() => {
@@ -359,16 +372,21 @@ window.onload = () => {
                 procedure = "filling";
                 setTimeout(draw, 10);
                 break;
+            // 填色阶段
             case "filling":
                 // do control here.
+                // svgManager.fillInterval = ?
+                // svgManager.drawBatchCount = ?
                 setTimeout(draw, 50);
                 break;
+            // 填色完成阶段
             case "fill-done":
                 imgAnimationManager.display();
                 svgManager.hide();
                 procedure = "animation";
                 setTimeout(draw, 10);
                 break;
+            // 动画阶段
             case "animation":
                 // do control here.
                 imgAnimationManager.getController("捣衣").setFPS(30);
