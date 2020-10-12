@@ -25,7 +25,7 @@ export default class Manager {
         该函数由Java端在Attention值变化时调用.  
     */
     @IPC.registerMessageHandler
-    private static onAttentionValueChangedEvent(value: Number) {
+    private static onAttentionValueChangedEvent(value: number) {
         Manager.getInstance().window.setTitle(`EEG DEMO - attention value: ${value}`);
         // 将attention值由主进程传递到渲染进程，见renderer.ts.
         Manager.getInstance().window.webContents.send("onAttentionValueChangedEvent", value);
@@ -35,7 +35,7 @@ export default class Manager {
         该函数由Java端需要向前端发送消息时调用.
     */
     @IPC.registerMessageHandler
-    private onMessage(message:String){
+    private onMessage(message:string){
         console.log(message);
     }
 }

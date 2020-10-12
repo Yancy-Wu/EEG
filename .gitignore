@@ -1,6 +1,7 @@
 # project files.
 .vscode
 /FrontEnd/.vscode
+/EEG/.idea/workspace.xml
 
 # generated files.
 /EEG/out
@@ -11,6 +12,7 @@
 # animation pictures. too big.
 /FrontEnd/animation
 /FrontEnd/animation-resize
+/FrontEnd/background.png
 
 # log
 */log.txt

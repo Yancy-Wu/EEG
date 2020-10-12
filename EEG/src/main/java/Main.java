@@ -43,11 +43,10 @@ public class Main {
         /*
             主线程中其他正常进行的逻辑操作.
          */
-        for (int i = 0; i < 10000; i++) {
-            eeg.sendAttentionValueChangedEvent(i);
+        while(true) {
+            eeg.sendAttentionValueChangedEvent((int) (Math.random() * 100));
             if(terminated[0]) return;
             Thread.sleep(1000);
         }
-        Thread.sleep(1000);
     }
 }
