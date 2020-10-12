@@ -20,6 +20,23 @@ function getAttentionValue(): number {
     return Math.max(0, Math.min(att, 100)) / 100;
 }
 
+class TimeoutManager {
+    private static savedTimer: NodeJS.Timeout[] = [];
+    public static setTimeout(callback:Function, time:number): NodeJS.Timeout {
+        const tag = setTimeout(() => {
+            this.savedTimer.splice(this.savedTimer.indexOf(tag), 1);
+            callback();
+        }, time);
+        this.savedTimer.push(tag);
+        return tag;
+    }
+    public static clearAll() {
+        this.savedTimer.forEach(timer => {
+            clearTimeout(timer);
+        })
+    }
+}
+
 /*
     二维向量表示.
 */
@@ -54,6 +71,7 @@ class SVGPathManipulator {
     private pathElement: SVGPathElement;
     private startPosition: Vector2;
     private fillColor: string;
+    private timer: NodeJS.Timeout = null;
     public edgeInterval: number = 30;
     public edgeDecrease: number = 10;
     public fillOpacityIncrease: number = 0.3;
@@ -122,6 +140,9 @@ class SVGPathManipulator {
     // 不填充该路径
     public hideFill = () => this.pathElement.style.fill = "none";
 
+    // 终止绘画
+    public stop = () => { if(this.timer != null) clearTimeout(this.timer);}
+
     // 设定画笔颜色和宽度
     public setStrokeColor = (color: string) => this.pathElement.style.stroke = color;
     public setStrokeWidth = (width: number) => this.pathElement.style.strokeWidth = width.toString();
@@ -131,7 +152,7 @@ class SVGPathManipulator {
         let len = this.pathElement.getTotalLength();
         let savedLen = len;
         // 每隔interval时间，绘制decrease长度.
-        let animation = setInterval(() => {
+        let loop = () => {
             // 当前绘制进度
             const t = (1 - len / this.pathElement.getTotalLength());
             // 获取绘制速率
@@ -141,26 +162,24 @@ class SVGPathManipulator {
             len = Math.max(0, len);
             this.pathElement.style.strokeDasharray = savedLen.toString();
             this.pathElement.style.strokeDashoffset = len.toString();
-            if (len <= 0) {
-                clearInterval(animation);
-                onDone();
-            }
-        }, this.edgeInterval);
+            if (len <= 0) onDone();
+            else this.timer = TimeoutManager.setTimeout(loop, this.edgeInterval);
+        }
+        TimeoutManager.setTimeout(loop, this.edgeInterval);
     }
 
     // 填充该路径
     public drawFill(onDone: Function) {
         let opacity = 0.0;
-        let animation = setInterval(() => {
+        let loop = () => {
             opacity += this.fillOpacityIncrease;
             opacity = Math.min(1.0, opacity);
             this.pathElement.style.fill = this.fillColor;
             this.pathElement.style.opacity = opacity.toString();
-            if (opacity >= 0.99) {
-                clearInterval(animation);
-                onDone();
-            }
-        }, this.fillInterval);
+            if (opacity >= 0.99) onDone();
+            else this.timer = TimeoutManager.setTimeout(loop, this.fillInterval);
+        }
+        TimeoutManager.setTimeout(loop, this.fillInterval);
     }
 }
 
@@ -241,7 +260,7 @@ class ImageAnimationController {
         if (this.fps == 0) return;
         this.curFrameIndex = (this.curFrameIndex + 1) % this.imgs.length;
         this.drawFrame(this.curFrameIndex);
-        this.timer = setTimeout(this.update.bind(this), 1000 / this.fps);
+        this.timer = TimeoutManager.setTimeout(this.update.bind(this), 1000 / this.fps);
     }
 }
 
@@ -249,6 +268,7 @@ class ImageAnimationController {
 class ImageAnimationManager {
     private controllerDict: { [key: string]: ImageAnimationController; } = {}
     private controllerList: ImageAnimationController[] = [];
+    private loaded: boolean = false;
 
     public constructor(containerElement: HTMLDivElement) {
         let loadedController = 0;
@@ -256,6 +276,9 @@ class ImageAnimationManager {
 
         // 获取存放图片的div元素下的所有子节点
         canvasElements.forEach((canvasElement: HTMLCanvasElement) => {
+            // 设定其宽度为窗口宽度
+            canvasElement.style.width = window.innerWidth.toString();
+
             // 获取子节点的名称和动画资源目录
             const name = canvasElement.dataset.name;
             const animationDir = canvasElement.dataset.animationDir;
@@ -266,7 +289,10 @@ class ImageAnimationManager {
             this.controllerList.push(controller);
             controller.onload = () => {
                 loadedController++;
-                if (loadedController == canvasElements.length) this.onload();
+                if (loadedController == canvasElements.length) {
+                    this.onload();
+                    this.loaded = true;
+                }
             }
         });
     }
@@ -283,6 +309,11 @@ class ImageAnimationManager {
         this.controllerList.forEach(controller => totalFrameCount += controller.getFrameCount());
         this.controllerList.forEach(controller => loadedFrameCount += controller.getLoadedFrameCount());
         return loadedFrameCount / totalFrameCount;
+    }
+
+    // 是否完成
+    public isLoaded():boolean {
+        return this.loaded;
     }
 
     // 清空所有画布的内容
@@ -384,6 +415,13 @@ class SVGManager {
         drawEdgeImpl();
     }
 
+    public stopAll() {
+        this.paths.forEach((path, _, __) => {
+            path.stop();
+        })
+        this.drawingCount = 0;
+    }
+
     // 隐藏所有的路径
     public hide() {
         this.paths.forEach((path, _, __) => {
@@ -410,22 +448,32 @@ window.onload = () => {
     const toastElement = document.getElementById("toast");
     const backElement = document.getElementById("backWrapper");
     const backImgElement = document.getElementById("backImg");
+    const svgContainer = document.getElementById("svgContainer");
+    const imgContainer = document.getElementById("imgContainer");
+    const restartButton = document.getElementById("restartButton");
 
     // 创建SVG管理和图片动画管理.
-    const svgManager = new SVGManager(
-        <HTMLDivElement>document.getElementById("svgContainer")
-    );
-    const imgAnimationManager = new ImageAnimationManager(
-        <HTMLDivElement>document.getElementById("imgContainer")
-    );
+    const svgManager = new SVGManager(<HTMLDivElement>svgContainer);
+    const imgAnimationManager = new ImageAnimationManager(<HTMLDivElement>imgContainer);
 
     // 设定背景图片的宽度;
     backImgElement.style.width = window.innerWidth.toString();
+    const svgElement = <SVGElement>svgContainer.children[0];
+    svgElement.style.width = window.innerWidth.toString();
 
-    // 主渲染逻辑
+    // 流程定义
     let procedure: "prepare" | "loading" | "load-done" | "edging" | "edge-done" | "filling" |
                    "fill-done" | "animation" | "end" = "prepare";
+
+    // 设定单击事件
+    restartButton.onclick = () => {
+        console.log("awdawdawdw");
+        procedure = "end";
+    }
+
+    // 主渲染逻辑
     let draw = () => {
+        console.log(procedure);
         const attention = getAttentionValue();
         switch (procedure) {
             // 准备阶段
@@ -433,8 +481,12 @@ window.onload = () => {
                 svgManager.hide();
                 imgAnimationManager.hide();
                 procedure = "loading";
-                imgAnimationManager.onload = () => {
-                    procedure = "load-done";
+                if(imgAnimationManager.isLoaded()) procedure = "load-done";
+                else {
+                    imgAnimationManager.onload = () => {
+                        procedure = "load-done";
+                        // procedure = "edge-done";
+                    }
                 }
                 setTimeout(draw, 50);
                 break;
@@ -445,6 +497,8 @@ window.onload = () => {
             // 加载完毕阶段
             case "load-done":
                 backElement.style.width = "100%";
+                imgContainer.style.width = "100%";
+                svgContainer.style.width = "100%";
                 toastElement.className = "loaded";
                 setTimeout(() => {
                     procedure = "edging";
@@ -453,12 +507,13 @@ window.onload = () => {
                     });
                     draw();
                 }, 4000);
+                break;
             // 描边阶段
             case "edging":
                 // do control here.
                 // svgManager.edgeInterval = (1 / (attention + 0.1)) * 30;
                 // svgManager.drawBatchCount = ?
-                svgManager.edgeLengthPerDraw = attention * 30;
+                svgManager.edgeLengthPerDraw = Math.max(attention, 0.1) * 30;
                 setTimeout(draw, 50);
                 break;
             // 描边完成阶段
@@ -473,7 +528,7 @@ window.onload = () => {
             // 填色阶段
             case "filling":
                 // do control here.
-                svgManager.fillOpacityIncrease = attention * 0.5;
+                svgManager.fillOpacityIncrease = Math.max(attention, 0.1) * 0.5;
                 // svgManager.drawBatchCount = ?
                 setTimeout(draw, 50);
                 break;
@@ -492,6 +547,21 @@ window.onload = () => {
                 imgAnimationManager.getController("熨布").setFPS(30);
                 imgAnimationManager.getController("织衣").setFPS(60);
                 setTimeout(draw, 50);
+                break;
+            case "end":
+                TimeoutManager.clearAll();
+                svgManager.stopAll();
+                imgContainer.style.width = "0%";
+                backElement.style.width = "0%";
+                svgContainer.style.width = "0%";
+                imgAnimationManager.getController("捣衣").setFPS(0);
+                imgAnimationManager.getController("煽火").setFPS(0);
+                imgAnimationManager.getController("熨布").setFPS(0);
+                imgAnimationManager.getController("织衣").setFPS(0);
+                setTimeout(() => {
+                    procedure = "prepare";
+                    draw();
+                }, 3000);
                 break;
             default:
                 break;

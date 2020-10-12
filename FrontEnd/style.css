@@ -8,15 +8,36 @@ body, html {
     background-color: black;
 }
 
+#main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+}
+
 #svgContainer, #imgContainer, #backContainer {
     position: absolute;
-    left: 0;
-    top: 0;
     width: 100%;
     height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
+    transition: 2.5s ease;
+}
+
+#status {
+    position: absolute;
+    top:0;
+    width: 100%;
+}
+
+svg {
+    position: absolute;
+    left: 0;
+    height: 100%;
 }
 
 #backWrapper {
@@ -28,19 +49,35 @@ body, html {
     transition: 2.5s ease;
 }
 
-#svgContainer svg {
-    width:100%;
-}
-
 .frameImg {
     position: absolute;
     left: 0;
-    width: 100%;
 }
 
 #attentionValTitle {
     /* display: none; */
     color: aliceblue;
+}
+
+#restartButton {
+    width: 100px;
+    height: 30px;
+    background-color: black;
+    border: 2px solid white;
+    border-radius: 5px;
+    color: white;
+    transition: 0.5s ease;
+    text-align:center;
+    line-height: 30px;
+    z-index:200;
+    float: right;
+}
+
+#restartButton:hover {
+    background-color: white;
+    border: 2px solid white;
+    color: black;
+    cursor: pointer;
 }
 
 .loading {
