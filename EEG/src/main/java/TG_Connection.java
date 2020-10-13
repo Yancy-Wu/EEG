@@ -4,6 +4,10 @@ import com.sun.jna.win32.StdCallLibrary;
 import java.io.File;
 
 public class TG_Connection extends Thread {
+    // eeg server.
+    private EEGService eeg;
+    boolean terminating = false;
+
     // thinkgear connection
     int connectionID = -1;
 
@@ -54,7 +58,7 @@ public class TG_Connection extends Thread {
     }
     // using JNA technique to load C++ library
     public interface Dll extends StdCallLibrary {
-        Dll INSTANCE = (Dll) Native.load(System.getProperty("user.dir") + File.separator + "src\\connection\\thinkgear64.dll", Dll.class);
+        Dll INSTANCE = (Dll) Native.load(System.getProperty("user.dir") + File.separator + "thinkgear64.dll", Dll.class);
         public int TG_GetVersion();
         public int TG_GetNewConnectionId();
         public int TG_SetStreamLog(int connectionId, String filename);
@@ -68,9 +72,17 @@ public class TG_Connection extends Thread {
     }
 
 
+    public TG_Connection(EEGService eeg) {
+        this.eeg = eeg;
+    }
+
+    public void terminate() {
+        this.terminating = true;
+    }
+
     public void run() {
 
-        String comPortName = "\\\\.\\COM5";
+        String comPortName = "\\\\.\\COM4";
 
         int dllversion = Dll.INSTANCE.TG_GetVersion();
         System.out.println("The dllversion is: " + dllversion);
@@ -103,12 +115,13 @@ public class TG_Connection extends Thread {
         connection_status = true;
         System.out.println("Thinkgear initials succeessfully!");
 
-        while(true) {
+        while(!this.terminating) {
             errCode = Dll.INSTANCE.TG_ReadPackets(connectionID, 1);
             if (errCode == 1) {
 
                 if (Dll.INSTANCE.TG_GetValueStatus(connectionID, TG_DATA_ATTENTION) != 0) {  // if value changes
                     attention = Dll.INSTANCE.TG_GetValue(connectionID, TG_DATA_ATTENTION);
+                    eeg.sendAttentionValueChangedEvent((int) attention);
                     System.out.println("Current Attention Value is: " + attention);
                 }
 

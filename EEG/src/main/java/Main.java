@@ -10,6 +10,12 @@ public class Main {
         final boolean[] terminated = {false};
 
         /*
+            主线程中其他正常进行的逻辑操作.
+         */
+        final TG_Connection tg = new TG_Connection(eeg);
+        tg.start();
+
+        /*
             监视线程，该线程每2s检查一次来自前端的心跳(Tick)信号。
             如果没有收到则认为与前端的通信断开，然后停止运行。
          */
@@ -24,6 +30,7 @@ public class Main {
                         // 终止server运行并标记
                         System.out.println("Terminated because no tick received.");
                         server.interrupt();
+                        tg.terminate();
                         terminated[0] = true;
                         return;
                     }
@@ -39,14 +46,10 @@ public class Main {
         // Server启动，开始监听
         server.start();
 
-
-        /*
-            主线程中其他正常进行的逻辑操作.
-         */
-        while(true) {
-            eeg.sendAttentionValueChangedEvent((int) (Math.random() * 100));
-            if(terminated[0]) return;
-            Thread.sleep(1000);
-        }
+//        while(true) {
+//            eeg.sendAttentionValueChangedEvent((int) (Math.random() * 100));
+//            if(terminated[0]) return;
+//            Thread.sleep(1000);
+//        }
     }
 }

@@ -540,10 +540,10 @@ window.onload = () => {
                 svgContainer.style.width = "100%";
                 toastElement.className = "loaded";
                 setTimeout(() => {
-                    procedure = "edging";
-                    svgManager.drawEdgeBundle(() => {
-                        procedure = "edge-done";
-                    });
+                    procedure = "fill-done";
+                    // svgManager.drawEdgeBundle(() => {
+                    //     procedure = "edge-done";
+                    // });
                     draw();
                 }, 3000);
                 break;
@@ -581,10 +581,10 @@ window.onload = () => {
             // 动画阶段
             case "animation":
                 // do control here.
-                imgAnimationManager.getController("捣衣").setFPS(0);
-                imgAnimationManager.getController("煽火").setFPS(30);
-                imgAnimationManager.getController("熨布").setFPS(30);
-                imgAnimationManager.getController("织衣").setFPS(60);
+                imgAnimationManager.getController("捣衣").setFPS(Number((attention - 0.4) > 0) * 10 + (Math.max(attention - 0.4, 0) / 0.6) * 30);
+                imgAnimationManager.getController("煽火").setFPS(Number((attention - 0.6) > 0) * 10 + (Math.max(attention - 0.6, 0) / 0.4) * 30);
+                imgAnimationManager.getController("熨布").setFPS(Number((attention - 0.8) > 0) * 10 + (Math.max(attention - 0.8, 0) / 0.2) * 30);
+                imgAnimationManager.getController("织衣").setFPS(Number((attention - 0.2) > 0) * 10 + (Math.max(attention - 0.2, 0) / 0.8) * 30);
                 setTimeout(draw, 50);
                 break;
             case "end":
