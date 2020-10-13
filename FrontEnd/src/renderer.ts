@@ -331,17 +331,40 @@ class ImageAnimationManager {
 }
 
 
+class AudioManager {
+    private audioElements: HTMLAudioElement[] = null;
+    private maxAudioNum: number = 2;
+    constructor(audioContainer: HTMLDivElement) {
+        this.audioElements = Array.from(audioContainer.children).map(child => <HTMLAudioElement>child);
+    }
+    public playIfAvail() {
+        let availElementIndices: HTMLAudioElement[] = [];
+        this.audioElements.forEach(audioElement => {
+            if(audioElement.ended == true || audioElement.readyState == 4) {
+                availElementIndices.push(audioElement);
+            }
+        });
+        if(availElementIndices.length <= this.audioElements.length - this.maxAudioNum) return;
+        console.log(availElementIndices.length);
+        availElementIndices[Math.floor(Math.random() * availElementIndices.length)].play();
+    }
+}
+
 // 操控SVG图片的管理类
 class SVGManager {
     private paths: SVGPathManipulator[] = null;
     private drawingCount:number = 0;
-    public drawBatchCount: number = 6;
+    private audioManager: AudioManager = null;
+    public drawBatchCount: number = 4;
     public edgeLengthPerDraw: number = 10;
     public edgeInterval: number = 30;
     public fillInterval: number = 30;
     public fillOpacityIncrease: number = 0.3;
 
-    public constructor(svgContainer: HTMLDivElement) {
+    public constructor(svgContainer: HTMLDivElement, audioManager: AudioManager) {
+        // 保存声音管理
+        this.audioManager = audioManager;
+
         // 获取捣练图的SVG文件内容.
         let svgFileBuffer = fs.readFileSync(svgContainer.dataset.svgPath);
         svgContainer.innerHTML = svgFileBuffer.toString();
@@ -377,19 +400,22 @@ class SVGManager {
     // 同时进行多个路径的填充操作
     public drawFillBundle(onDone:Function) {
         let nextDrawIndex = 0;
+        let hasDone = 0;
         let drawFillImpl = () => {
             if(nextDrawIndex == this.getPathCount()) return;
             for(;this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
+                this.audioManager.playIfAvail();
                 const path = this.paths[nextDrawIndex];
                 path.fillInterval = this.fillInterval;
                 path.fillOpacityIncrease = this.fillOpacityIncrease;
                 path.hideEdge();
                 path.drawFill(() => {
                     --this.drawingCount;
+                    ++hasDone;
+                    if(hasDone == this.getPathCount()) onDone(); 
                     drawFillImpl();
                 });
-                ++nextDrawIndex;
-                if(nextDrawIndex == this.getPathCount()) onDone(); 
+                ++nextDrawIndex;                
             }
         };
         drawFillImpl();
@@ -398,18 +424,21 @@ class SVGManager {
     // 同时进行多个路径的绘制操作.
     public drawEdgeBundle(onDone:Function) {
         let nextDrawIndex = 0;
+        let hasDone = 0;
         let drawEdgeImpl = () => {
             if(nextDrawIndex == this.getPathCount()) return;
             for(;this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
+                this.audioManager.playIfAvail();
                 const path = this.paths[nextDrawIndex];
                 path.edgeDecrease = this.edgeLengthPerDraw;
                 path.edgeInterval = this.edgeInterval;
                 this.paths[nextDrawIndex].drawEdge(() => {
                     --this.drawingCount;
+                    ++hasDone;
+                    if(hasDone == this.getPathCount()) onDone(); 
                     drawEdgeImpl();
                 });
                 ++nextDrawIndex;
-                if(nextDrawIndex == this.getPathCount()) onDone(); 
             }
         };
         drawEdgeImpl();
@@ -445,16 +474,18 @@ class SVGManager {
 
 window.onload = () => {
     // 拿到一些元素节点.
-    const toastElement = document.getElementById("toast");
-    const backElement = document.getElementById("backWrapper");
-    const backImgElement = document.getElementById("backImg");
-    const svgContainer = document.getElementById("svgContainer");
-    const imgContainer = document.getElementById("imgContainer");
-    const restartButton = document.getElementById("restartButton");
+    const toastElement = <HTMLDivElement>document.getElementById("toast");
+    const backElement = <HTMLDivElement>document.getElementById("backWrapper");
+    const backImgElement = <HTMLImageElement>document.getElementById("backImg");
+    const svgContainer = <HTMLDivElement>document.getElementById("svgContainer");
+    const imgContainer = <HTMLImageElement>document.getElementById("imgContainer");
+    const restartButton = <HTMLDivElement>document.getElementById("restartButton");
+    const audioContainer = <HTMLDivElement>document.getElementById("audioContainer");
 
     // 创建SVG管理和图片动画管理.
-    const svgManager = new SVGManager(<HTMLDivElement>svgContainer);
-    const imgAnimationManager = new ImageAnimationManager(<HTMLDivElement>imgContainer);
+    const audioManager = new AudioManager(audioContainer);
+    const svgManager = new SVGManager(svgContainer, audioManager);
+    const imgAnimationManager = new ImageAnimationManager(imgContainer);
 
     // 设定背景图片的宽度;
     backImgElement.style.width = window.innerWidth.toString();
@@ -467,9 +498,17 @@ window.onload = () => {
 
     // 设定单击事件
     restartButton.onclick = () => {
-        console.log("awdawdawdw");
         procedure = "end";
     }
+
+    // 设定声音
+    // setInterval(() => {
+    //     // const index = Math.floor(Math.random() * 4);
+    //     const index = 0;
+    //     audioElement.src = `./audio/pencil_draw_${index}.mp3`;
+    //     audioElement.playbackRate = 1;
+    //     audioElement.play().then();
+    // }, 2000);
 
     // 主渲染逻辑
     let draw = () => {
@@ -506,7 +545,7 @@ window.onload = () => {
                         procedure = "edge-done";
                     });
                     draw();
-                }, 4000);
+                }, 3000);
                 break;
             // 描边阶段
             case "edging":
