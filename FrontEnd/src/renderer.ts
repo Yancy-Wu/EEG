@@ -17,13 +17,13 @@ ipcRenderer.on('onAttentionValueChangedEvent', function (_: any, value: number) 
 function getAttentionValue(): number {
     let attentionValSpan = document.getElementById("attentionVal");
     let att = Number.parseFloat(attentionValSpan.innerHTML);
-    if(att.toString() == 'NaN') att = 0;
+    if (att.toString() == 'NaN') att = 0;
     return Math.max(0, Math.min(att, 100)) / 100;
 }
 
 class TimeoutManager {
     private static savedTimer: NodeJS.Timeout[] = [];
-    public static setTimeout(callback:Function, time:number): NodeJS.Timeout {
+    public static setTimeout(callback: Function, time: number): NodeJS.Timeout {
         const tag = setTimeout(() => {
             this.savedTimer.splice(this.savedTimer.indexOf(tag), 1);
             callback();
@@ -76,7 +76,7 @@ class SVGPathManipulator {
     public edgeInterval: number = 30;
     public edgeDecrease: number = 10;
     public fillOpacityIncrease: number = 0.3;
-    public fillInterval:number = 30;
+    public fillInterval: number = 30;
     constructor(pathElement: SVGPathElement) {
         this.pathElement = pathElement;
         // 拿到该路径的起始点
@@ -142,12 +142,12 @@ class SVGPathManipulator {
     public hideFill = () => this.pathElement.style.fill = "none";
 
     // 终止绘画
-    public stop = () => { if(this.timer != null) clearTimeout(this.timer);}
+    public stop = () => { if (this.timer != null) clearTimeout(this.timer); }
 
     // 设定画笔颜色和宽度
     public setStrokeColor = (color: string) => this.pathElement.style.stroke = color;
     public setStrokeWidth = (width: number) => this.pathElement.style.strokeWidth = width.toString();
-    
+
     // 绘制该路径的边线
     public drawEdge(onDone: Function) {
         let len = this.pathElement.getTotalLength();
@@ -247,7 +247,7 @@ class ImageAnimationController {
     }
 
     // 绘制指定的帧
-    private drawFrame(frameIndex:number) {
+    private drawFrame(frameIndex: number) {
         let ctx = this.canvasElement.getContext("2d");
         const width = Number.parseFloat(this.canvasElement.getAttribute("width"));
         const height = Number.parseFloat(this.canvasElement.getAttribute("height"));
@@ -313,7 +313,7 @@ class ImageAnimationManager {
     }
 
     // 是否完成
-    public isLoaded():boolean {
+    public isLoaded(): boolean {
         return this.loaded;
     }
 
@@ -337,23 +337,46 @@ class AudioManager {
     private maxAudioNum: number = 2;
     constructor(audioContainer: HTMLDivElement) {
         this.audioElements = Array.from(audioContainer.children).map(child => <HTMLAudioElement>child);
+        this.audioElements.forEach((audioElement) => {
+            audioElement.volume = Number.parseFloat(audioElement.dataset.volumn);
+            audioElement.playbackRate = Number.parseFloat(audioElement.dataset.speed);
+        })
     }
     public playIfAvail() {
         let availElementIndices: HTMLAudioElement[] = [];
         this.audioElements.forEach(audioElement => {
-            if(audioElement.ended == true || audioElement.readyState == 4) {
+            if (audioElement.ended == true || audioElement.readyState == 4) {
                 availElementIndices.push(audioElement);
             }
         });
-        if(availElementIndices.length <= this.audioElements.length - this.maxAudioNum) return;
+        if (availElementIndices.length <= this.audioElements.length - this.maxAudioNum) return;
         availElementIndices[Math.floor(Math.random() * availElementIndices.length)].play();
+    }
+}
+
+class BackAudioManager {
+    private audioElements: HTMLAudioElement[] = null;
+    private curPlayIndex: number = 0;
+    constructor(audioContainer: HTMLDivElement) {
+        this.audioElements = Array.from(audioContainer.children).map(child => <HTMLAudioElement>child);
+        this.audioElements.forEach((audioElement) => {
+            audioElement.volume = Number.parseFloat(audioElement.dataset.volumn);
+        });
+        const loop = () => {
+            this.audioElements[this.curPlayIndex].play();
+            this.audioElements[this.curPlayIndex].onended = () => {
+                setTimeout(loop, 2000);
+            };
+            this.curPlayIndex = (this.curPlayIndex + 1) % this.audioElements.length;
+        };
+        loop();
     }
 }
 
 // 操控SVG图片的管理类
 class SVGManager {
     private paths: SVGPathManipulator[] = null;
-    private drawingCount:number = 0;
+    private drawingCount: number = 0;
     private audioManager: AudioManager = null;
     public drawBatchCount: number = 4;
     public edgeLengthPerDraw: number = 10;
@@ -398,12 +421,12 @@ class SVGManager {
     }
 
     // 同时进行多个路径的填充操作
-    public drawFillBundle(onDone:Function) {
+    public drawFillBundle(onDone: Function) {
         let nextDrawIndex = 0;
         let hasDone = 0;
         let drawFillImpl = () => {
-            if(nextDrawIndex == this.getPathCount()) return;
-            for(;this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
+            if (nextDrawIndex == this.getPathCount()) return;
+            for (; this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
                 this.audioManager.playIfAvail();
                 const path = this.paths[nextDrawIndex];
                 path.fillInterval = this.fillInterval;
@@ -412,22 +435,22 @@ class SVGManager {
                 path.drawFill(() => {
                     --this.drawingCount;
                     ++hasDone;
-                    if(hasDone == this.getPathCount()) onDone(); 
+                    if (hasDone == this.getPathCount()) onDone();
                     drawFillImpl();
                 });
-                ++nextDrawIndex;                
+                ++nextDrawIndex;
             }
         };
         drawFillImpl();
     }
 
     // 同时进行多个路径的绘制操作.
-    public drawEdgeBundle(onDone:Function) {
+    public drawEdgeBundle(onDone: Function) {
         let nextDrawIndex = 0;
         let hasDone = 0;
         let drawEdgeImpl = () => {
-            if(nextDrawIndex == this.getPathCount()) return;
-            for(;this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
+            if (nextDrawIndex == this.getPathCount()) return;
+            for (; this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
                 this.audioManager.playIfAvail();
                 const path = this.paths[nextDrawIndex];
                 path.edgeDecrease = this.edgeLengthPerDraw;
@@ -435,7 +458,7 @@ class SVGManager {
                 this.paths[nextDrawIndex].drawEdge(() => {
                     --this.drawingCount;
                     ++hasDone;
-                    if(hasDone == this.getPathCount()) onDone(); 
+                    if (hasDone == this.getPathCount()) onDone();
                     drawEdgeImpl();
                 });
                 ++nextDrawIndex;
@@ -481,11 +504,13 @@ window.onload = () => {
     const imgContainer = <HTMLImageElement>document.getElementById("imgContainer");
     const restartButton = <HTMLDivElement>document.getElementById("restartButton");
     const audioContainer = <HTMLDivElement>document.getElementById("audioContainer");
+    const backAudioContainer = <HTMLDivElement>document.getElementById("backAudioContainer");
 
     // 创建SVG管理和图片动画管理.
     const audioManager = new AudioManager(audioContainer);
     const svgManager = new SVGManager(svgContainer, audioManager);
     const imgAnimationManager = new ImageAnimationManager(imgContainer);
+    const backAudioManager = new BackAudioManager(backAudioContainer);
 
     // 设定背景图片的宽度;
     backImgElement.style.width = window.innerWidth.toString();
@@ -494,7 +519,7 @@ window.onload = () => {
 
     // 流程定义
     let procedure: "prepare" | "loading" | "load-done" | "edging" | "edge-done" | "filling" |
-                   "fill-done" | "animation" | "end" = "prepare";
+        "fill-done" | "animation" | "end" = "prepare";
 
     // 设定单击事件
     restartButton.onclick = () => {
@@ -520,7 +545,7 @@ window.onload = () => {
                 svgManager.hide();
                 imgAnimationManager.hide();
                 procedure = "loading";
-                if(imgAnimationManager.isLoaded()) procedure = "load-done";
+                if (imgAnimationManager.isLoaded()) procedure = "load-done";
                 else {
                     imgAnimationManager.onload = () => {
                         procedure = "load-done";
