@@ -373,6 +373,31 @@ class BackAudioManager {
     }
 }
 
+// 时间管理器
+class TimeManager {
+    private startTime: number;
+    private currentTime: number;
+    private stopped: boolean = false;
+    public start() {
+        this.startTime = new Date().getTime();
+        this.stopped = false;
+    }
+    private fixInteger(num:number, length:number) {
+        return (Array(length).join('0') + num).slice(-length);
+    }
+    public getElapseTime() {
+        if(!this.stopped) this.currentTime = new Date().getTime();
+        const elapseTime = new Date(this.currentTime - this.startTime);
+        const mins = this.fixInteger(elapseTime.getMinutes(), 2);
+        const secs = this.fixInteger(elapseTime.getSeconds(), 2);
+        const millSecs = this.fixInteger(elapseTime.getMilliseconds(), 3);
+        return `${mins}:${secs}:${millSecs}`;
+    }
+    public stop() {
+        this.stopped = true;
+    }
+}
+
 // 操控SVG图片的管理类
 class SVGManager {
     private paths: SVGPathManipulator[] = null;
@@ -505,12 +530,16 @@ window.onload = () => {
     const restartButton = <HTMLDivElement>document.getElementById("restartButton");
     const audioContainer = <HTMLDivElement>document.getElementById("audioContainer");
     const backAudioContainer = <HTMLDivElement>document.getElementById("backAudioContainer");
+    const attentionProgressBar = <HTMLDivElement>document.getElementById("attentionValProgress");
+    const paintingTime = <HTMLSpanElement>document.getElementById("paintingTime");
+    const paintingTimeContainer = <HTMLDivElement>document.getElementById("patingTimeContainer");
 
     // 创建SVG管理和图片动画管理.
     const audioManager = new AudioManager(audioContainer);
     const svgManager = new SVGManager(svgContainer, audioManager);
     const imgAnimationManager = new ImageAnimationManager(imgContainer);
     const backAudioManager = new BackAudioManager(backAudioContainer);
+    const timeManager = new TimeManager();
 
     // 设定背景图片的宽度;
     backImgElement.style.width = window.innerWidth.toString();
@@ -537,11 +566,14 @@ window.onload = () => {
 
     // 主渲染逻辑
     let draw = () => {
-        console.log(procedure);
         const attention = getAttentionValue();
+        const elapseTime = timeManager.getElapseTime();
+        paintingTime.innerHTML = elapseTime.toString();
+        attentionProgressBar.style.width = `${attention * 100}%`;
         switch (procedure) {
             // 准备阶段
             case "prepare":
+                paintingTimeContainer.style.display = `none`;
                 svgManager.hide();
                 imgAnimationManager.hide();
                 procedure = "loading";
@@ -566,6 +598,8 @@ window.onload = () => {
                 toastElement.className = "loaded";
                 setTimeout(() => {
                     procedure = "edging";
+                    paintingTimeContainer.style.display = `block`;
+                    timeManager.start();
                     svgManager.drawEdgeBundle(() => {
                         procedure = "edge-done";
                     });
@@ -577,7 +611,7 @@ window.onload = () => {
                 // do control here.
                 // svgManager.edgeInterval = (1 / (attention + 0.1)) * 30;
                 // svgManager.drawBatchCount = ?
-                svgManager.edgeLengthPerDraw = Math.max(attention, 0.1) * 30;
+                svgManager.edgeLengthPerDraw = Math.max(attention, 0.1) * 50;
                 setTimeout(draw, 50);
                 break;
             // 描边完成阶段
@@ -592,7 +626,7 @@ window.onload = () => {
             // 填色阶段
             case "filling":
                 // do control here.
-                svgManager.fillOpacityIncrease = Math.max(attention, 0.1) * 0.5;
+                svgManager.fillOpacityIncrease = Math.max(attention, 0.1) * 0.8;
                 // svgManager.drawBatchCount = ?
                 setTimeout(draw, 50);
                 break;
@@ -601,15 +635,16 @@ window.onload = () => {
                 imgAnimationManager.display();
                 svgManager.hide();
                 procedure = "animation";
+                timeManager.stop();
                 setTimeout(draw, 10);
                 break;
             // 动画阶段
             case "animation":
                 // do control here.
-                imgAnimationManager.getController("捣衣").setFPS(Number((attention - 0.4) > 0) * 10 + (Math.max(attention - 0.4, 0) / 0.6) * 30);
-                imgAnimationManager.getController("煽火").setFPS(Number((attention - 0.6) > 0) * 10 + (Math.max(attention - 0.6, 0) / 0.4) * 30);
-                imgAnimationManager.getController("熨布").setFPS(Number((attention - 0.8) > 0) * 10 + (Math.max(attention - 0.8, 0) / 0.2) * 30);
-                imgAnimationManager.getController("织衣").setFPS(Number((attention - 0.2) > 0) * 10 + (Math.max(attention - 0.2, 0) / 0.8) * 30);
+                imgAnimationManager.getController("捣衣").setFPS(Number((attention - 0.3) > 0) * 10 + (Math.max(attention - 0.3, 0) / 0.7) * 50);
+                imgAnimationManager.getController("煽火").setFPS(Number((attention - 0.45) > 0) * 10 + (Math.max(attention - 0.45, 0) / 0.55) * 50);
+                imgAnimationManager.getController("熨布").setFPS(Number((attention - 0.55) > 0) * 10 + (Math.max(attention - 0.55, 0) / 0.45) * 50);
+                imgAnimationManager.getController("织衣").setFPS(Number((attention - 0.1) > 0) * 10 + (Math.max(attention - 0.1, 0) / 0.9) * 50);
                 setTimeout(draw, 50);
                 break;
             case "end":

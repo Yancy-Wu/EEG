@@ -17,6 +17,40 @@ body, html {
     width: 100%;
 }
 
+#attentionValBar{
+    height: 15px;
+    width: 400px;
+    border: 1px solid #FFFFFFCC;
+    margin-left: 10px;
+    position: relative;
+}
+
+#attentionValProgress {
+    position: absolute;
+    top:0px;
+    left:0px;
+    height: 100%;
+    transition: 0.5s ease;
+    background-color: #FFFFFFCC;
+    width: 0%;
+}
+
+.attentionNumberClass {
+    color: #FFFFFFCC;
+    font-size: 18px;
+}
+
+#patingTimeContainer{
+    position: absolute;
+    bottom: 0px;
+    right: 0px;
+    color: #FFFFFFCC;
+}
+
+#attentionVal {
+    margin-left: 10px;
+}
+
 #svgContainer, #imgContainer, #backContainer {
     position: absolute;
     width: 100%;
@@ -32,6 +66,9 @@ body, html {
     position: absolute;
     top:0;
     width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
 }
 
 svg {
@@ -54,18 +91,25 @@ svg {
     left: 0;
 }
 
+#attentionContainer {
+    display: flex;
+    align-items: center;
+}
+
 #attentionValTitle {
     /* display: none; */
-    color: aliceblue;
+    color: #FFFFFFCC;
+    float: left;
+    font-size: 18px;
 }
 
 #restartButton {
     width: 100px;
     height: 30px;
     background-color: black;
-    border: 2px solid white;
+    border: 2px solid #FFFFFFCC;
     border-radius: 5px;
-    color: white;
+    color: #FFFFFFCC;
     transition: 0.5s cubic-bezier(0,0,0.3,1);
     text-align:center;
     line-height: 30px;
