@@ -540,10 +540,10 @@ window.onload = () => {
                 svgContainer.style.width = "100%";
                 toastElement.className = "loaded";
                 setTimeout(() => {
-                    procedure = "fill-done";
-                    // svgManager.drawEdgeBundle(() => {
-                    //     procedure = "edge-done";
-                    // });
+                    procedure = "edging";
+                    svgManager.drawEdgeBundle(() => {
+                        procedure = "edge-done";
+                    });
                     draw();
                 }, 3000);
                 break;
