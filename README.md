@@ -15,7 +15,7 @@ npm install --registry https://registry.npm.taobao.org
 ```
 
 ### 外部资源文件依赖
-将展示动画的`animation`文件夹和背景图片文件`background.png`复制到*FrontEnd*文件夹中
+将展示动画的`animation`文件夹，BGM文件夹`BGM`和背景图片文件`background.png`复制到*FrontEnd*文件夹中
 
 ### 执行！
 ```bash
