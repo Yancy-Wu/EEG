@@ -16,7 +16,8 @@ ipcRenderer.on('onAttentionValueChangedEvent', function (_: any, value: number) 
 */
 function getAttentionValue(): number {
     let attentionValSpan = document.getElementById("attentionVal");
-    const att = Number.parseFloat(attentionValSpan.innerHTML);
+    let att = Number.parseFloat(attentionValSpan.innerHTML);
+    if(att.toString() == 'NaN') att = 0;
     return Math.max(0, Math.min(att, 100)) / 100;
 }
 
