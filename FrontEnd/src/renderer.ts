@@ -346,7 +346,6 @@ class AudioManager {
             }
         });
         if(availElementIndices.length <= this.audioElements.length - this.maxAudioNum) return;
-        console.log(availElementIndices.length);
         availElementIndices[Math.floor(Math.random() * availElementIndices.length)].play();
     }
 }
