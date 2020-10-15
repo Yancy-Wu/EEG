@@ -149,7 +149,7 @@ class SVGPathManipulator {
     public setStrokeWidth = (width: number) => this.pathElement.style.strokeWidth = width.toString();
 
     // 绘制该路径的边线
-    public drawEdge(onDone: Function) {
+    public drawEdge(onDone: Function, ...args:any) {
         let len = this.pathElement.getTotalLength();
         let savedLen = len;
         // 每隔interval时间，绘制decrease长度.
@@ -163,21 +163,21 @@ class SVGPathManipulator {
             len = Math.max(0, len);
             this.pathElement.style.strokeDasharray = savedLen.toString();
             this.pathElement.style.strokeDashoffset = len.toString();
-            if (len <= 0) onDone();
+            if (len <= 0) onDone(args);
             else this.timer = TimeoutManager.setTimeout(loop, this.edgeInterval);
         }
         TimeoutManager.setTimeout(loop, this.edgeInterval);
     }
 
     // 填充该路径
-    public drawFill(onDone: Function) {
+    public drawFill(onDone: Function, ...args:any) {
         let opacity = 0.0;
         let loop = () => {
             opacity += this.fillOpacityIncrease;
             opacity = Math.min(1.0, opacity);
             this.pathElement.style.fill = this.fillColor;
             this.pathElement.style.opacity = opacity.toString();
-            if (opacity >= 0.99) onDone();
+            if (opacity >= 0.99) onDone(args);
             else this.timer = TimeoutManager.setTimeout(loop, this.fillInterval);
         }
         TimeoutManager.setTimeout(loop, this.fillInterval);
@@ -403,7 +403,8 @@ class SVGManager {
     private paths: SVGPathManipulator[] = null;
     private drawingCount: number = 0;
     private audioManager: AudioManager = null;
-    public drawBatchCount: number = 4;
+    private drawingPathIndices: number[] = [];
+    public drawBatchCount: number = 5;
     public edgeLengthPerDraw: number = 10;
     public edgeInterval: number = 30;
     public fillInterval: number = 30;
@@ -445,6 +446,17 @@ class SVGManager {
         this.drawingCount = 0;
     }
 
+    // 应用速度修改.
+    public applySpeedModify() {
+        this.drawingPathIndices.forEach(index => {
+            const path = this.paths[index];
+            path.edgeDecrease = this.edgeLengthPerDraw;
+            path.edgeInterval = this.edgeInterval;
+            path.fillInterval = this.fillInterval;
+            path.fillOpacityIncrease = this.fillOpacityIncrease;
+        })
+    }
+
     // 同时进行多个路径的填充操作
     public drawFillBundle(onDone: Function) {
         let nextDrawIndex = 0;
@@ -452,17 +464,19 @@ class SVGManager {
         let drawFillImpl = () => {
             if (nextDrawIndex == this.getPathCount()) return;
             for (; this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
+                this.drawingPathIndices.push(nextDrawIndex);
                 this.audioManager.playIfAvail();
                 const path = this.paths[nextDrawIndex];
                 path.fillInterval = this.fillInterval;
                 path.fillOpacityIncrease = this.fillOpacityIncrease;
                 path.hideEdge();
-                path.drawFill(() => {
+                path.drawFill((index:number) => {
+                    this.drawingPathIndices.splice(this.drawingPathIndices.indexOf(index), 1);
                     --this.drawingCount;
                     ++hasDone;
                     if (hasDone == this.getPathCount()) onDone();
                     drawFillImpl();
-                });
+                }, nextDrawIndex);
                 ++nextDrawIndex;
             }
         };
@@ -476,16 +490,18 @@ class SVGManager {
         let drawEdgeImpl = () => {
             if (nextDrawIndex == this.getPathCount()) return;
             for (; this.drawingCount <= this.drawBatchCount; ++this.drawingCount) {
+                this.drawingPathIndices.push(nextDrawIndex);
                 this.audioManager.playIfAvail();
                 const path = this.paths[nextDrawIndex];
                 path.edgeDecrease = this.edgeLengthPerDraw;
                 path.edgeInterval = this.edgeInterval;
-                this.paths[nextDrawIndex].drawEdge(() => {
+                this.paths[nextDrawIndex].drawEdge((index:number) => {
+                    this.drawingPathIndices.splice(this.drawingPathIndices.indexOf(index), 1);
                     --this.drawingCount;
                     ++hasDone;
                     if (hasDone == this.getPathCount()) onDone();
                     drawEdgeImpl();
-                });
+                }, nextDrawIndex);
                 ++nextDrawIndex;
             }
         };
@@ -520,6 +536,20 @@ class SVGManager {
     }
 }
 
+class ProgressHintManager {
+    private hintElements: HTMLDivElement[] = [];
+    constructor(hintContainer: HTMLDivElement) {
+        this.hintElements = Array.from(hintContainer.children).map(c => <HTMLDivElement>c);
+        this.hintElements.sort(
+            (a, b) => Number.parseFloat(a.dataset.checkpoint) - Number.parseFloat(b.dataset.checkpoint)
+        );
+        this.hintElements.forEach(hintElement => {
+            const checkpoint = Number.parseFloat(hintElement.dataset.checkpoint);
+            hintElement.style.left = `${checkpoint * 100}%`;
+        });
+    }
+}
+
 window.onload = () => {
     // 拿到一些元素节点.
     const toastElement = <HTMLDivElement>document.getElementById("toast");
@@ -533,6 +563,7 @@ window.onload = () => {
     const attentionProgressBar = <HTMLDivElement>document.getElementById("attentionValProgress");
     const paintingTime = <HTMLSpanElement>document.getElementById("paintingTime");
     const paintingTimeContainer = <HTMLDivElement>document.getElementById("patingTimeContainer");
+    const progressHintContainer = <HTMLDivElement>document.getElementById("progressHintContainer");
 
     // 创建SVG管理和图片动画管理.
     const audioManager = new AudioManager(audioContainer);
@@ -540,6 +571,7 @@ window.onload = () => {
     const imgAnimationManager = new ImageAnimationManager(imgContainer);
     const backAudioManager = new BackAudioManager(backAudioContainer);
     const timeManager = new TimeManager();
+    const progressHintManager = new ProgressHintManager(progressHintContainer);
 
     // 设定背景图片的宽度;
     backImgElement.style.width = window.innerWidth.toString();
@@ -574,6 +606,7 @@ window.onload = () => {
             // 准备阶段
             case "prepare":
                 paintingTimeContainer.style.display = `none`;
+                progressHintContainer.style.display = `none`;
                 svgManager.hide();
                 imgAnimationManager.hide();
                 procedure = "loading";
@@ -612,6 +645,7 @@ window.onload = () => {
                 // svgManager.edgeInterval = (1 / (attention + 0.1)) * 30;
                 // svgManager.drawBatchCount = ?
                 svgManager.edgeLengthPerDraw = Math.max(attention, 0.1) * 50;
+                svgManager.applySpeedModify();
                 setTimeout(draw, 50);
                 break;
             // 描边完成阶段
@@ -626,12 +660,15 @@ window.onload = () => {
             // 填色阶段
             case "filling":
                 // do control here.
-                svgManager.fillOpacityIncrease = Math.max(attention, 0.1) * 0.8;
-                // svgManager.drawBatchCount = ?
+                // interval: 1 -> 10, 0 -> 30;
+                // svgManager.fillOpacityIncrease = Math.max(attention, 0.1) * 0.8;
+                svgManager.fillInterval = 30 - attention * 20;
+                svgManager.applySpeedModify();
                 setTimeout(draw, 50);
                 break;
             // 填色完成阶段
             case "fill-done":
+                progressHintContainer.style.display = `block`;
                 imgAnimationManager.display();
                 svgManager.hide();
                 procedure = "animation";

@@ -71,6 +71,31 @@ body, html {
     justify-content: space-between;
 }
 
+.progressHint {
+    position: absolute;
+    top:0px;
+    height: 15px;
+    color: #FFFFFFCC;
+    border-right: 2px solid #FFFFFFCC;
+}
+
+#progressHintContainer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.progressHintText {
+    position: absolute;
+    margin-top: 15px;
+    width: 100px;
+    padding-left: 50%;
+    text-align: center;
+    margin-left: -50px;
+}
+
 svg {
     position: absolute;
     left: 0;
